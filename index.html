@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A searchable collection of animals documented in recovery operations, helping pet parents look for their missing companions.">
+  <meta name="theme-color" content="#f5f2e9">
+  <title>Find My Furbaby | Pet Recovery Archive</title>
+  <style>
+    :root {
+      --cream: #f5f2e9;
+      --paper: #fffdf8;
+      --sage: #71836d;
+      --sage-dark: #435541;
+      --sage-pale: #e7ece2;
+      --ink: #30372f;
+      --muted: #70776d;
+      --line: #e2e4da;
+      --clay: #b77d62;
+      --shadow: 0 12px 35px rgba(49, 62, 46, .08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--cream); color: var(--ink); }
+    a { color: inherit; }
+    .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    header { padding: 24px 0; }
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .brand-mark {
+      width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center;
+      background: var(--sage-pale); color: var(--sage-dark); font-size: 23px;
+    }
+    .brand-name { font-family: Georgia, serif; font-size: 22px; line-height: 1.1; }
+    .brand-sub { color: var(--muted); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; margin-top: 4px; }
+    .hero { padding: 54px 0 42px; text-align: center; }
+    .eyebrow { color: var(--sage-dark); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; font-weight: 700; }
+    h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(42px, 7vw, 70px); font-weight: 500; letter-spacing: -.04em; margin: 15px 0 12px; }
+    .hero p { max-width: 650px; margin: 0 auto; color: var(--muted); line-height: 1.7; font-size: 16px; }
+    .search-panel {
+      max-width: 850px; margin: 30px auto 0; background: var(--paper); border: 1px solid var(--line);
+      border-radius: 20px; padding: 16px; box-shadow: var(--shadow); text-align: left;
+    }
+    .searchbox { display: flex; gap: 10px; align-items: center; background: #f7f7f1; border: 1px solid var(--line); border-radius: 13px; padding: 0 15px; }
+    .searchbox span { color: var(--sage); font-size: 20px; }
+    input, select { font: inherit; color: var(--ink); }
+    #search { border: 0; outline: 0; background: transparent; width: 100%; padding: 16px 0; font-size: 15px; }
+    #search::placeholder { color: #92988d; }
+    .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 11px; }
+    select { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: white; padding: 12px; font-size: 13px; }
+    main { padding: 8px 0 70px; }
+    .results-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 24px 0 18px; }
+    h2 { font-family: Georgia, serif; font-weight: 500; font-size: 29px; margin: 0; }
+    #result-count { color: var(--muted); font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+    .pet-card { background: var(--paper); border: 1px solid var(--line); border-radius: 17px; overflow: hidden; box-shadow: 0 5px 18px rgba(49, 62, 46, .04); }
+    .pet-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--sage-pale); }
+    .photo-placeholder { aspect-ratio: 4 / 3; display: grid; place-items: center; background: var(--sage-pale); color: var(--sage-dark); font-size: 42px; }
+    .pet-info { padding: 16px; }
+    .pet-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .pet-id { color: var(--sage-dark); font-size: 11px; letter-spacing: .08em; font-weight: 800; }
+    .tag { background: var(--sage-pale); color: var(--sage-dark); border-radius: 99px; padding: 5px 9px; font-size: 11px; }
+    .pet-title { font-family: Georgia, serif; font-size: 21px; margin: 10px 0 6px; font-weight: 500; }
+    .pet-desc { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0; }
+    .pet-meta { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 11px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .empty { background: var(--paper); border: 1px dashed #cbd2c4; border-radius: 17px; padding: 34px 20px; text-align: center; color: var(--muted); grid-column: 1 / -1; line-height: 1.6; }
+    .empty strong { color: var(--sage-dark); display: block; font-family: Georgia, serif; font-size: 22px; font-weight: 500; margin-bottom: 5px; }
+    .notice { background: #eceee6; border: 1px solid #dfe4d9; border-radius: 15px; padding: 18px 20px; margin-top: 34px; color: #596354; font-size: 12px; line-height: 1.7; }
+    .notice strong { color: var(--sage-dark); }
+    footer { border-top: 1px solid var(--line); padding: 24px 0 34px; color: var(--muted); font-size: 12px; text-align: center; }
+    @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hero { padding-top: 38px; } }
+    @media (max-width: 520px) {
+      .wrap { width: min(100% - 28px, 1120px); }
+      .grid { grid-template-columns: 1fr; gap: 14px; }
+      .filters { grid-template-columns: 1fr; }
+      .results-head { align-items: start; flex-direction: column; gap: 5px; }
+      .brand-name { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <a class="brand" href="#" aria-label="Find My Furbaby home">
+        <div class="brand-mark" aria-hidden="true">🐾</div>
+        <div>
+          <div class="brand-name">Find My Furbaby</div>
+          <div class="brand-sub">Pet Recovery Archive</div>
+        </div>
+      </a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="eyebrow">A place to look, remember, and reconnect</div>
+      <h1>Find My Furbaby</h1>
+      <p>A searchable collection of animals documented in recovery operations, helping pet parents look for their missing companions.</p>
+
+      <div class="search-panel">
+        <div class="searchbox">
+          <span aria-hidden="true">⌕</span>
+          <input id="search" type="search" placeholder="Search by name, color, description, or features..." autocomplete="off">
+        </div>
+        <div class="filters">
+          <select id="location-filter" aria-label="Filter by recovery location">
+            <option value="">All recovery locations</option>
+          </select>
+          <select id="type-filter" aria-label="Filter by animal type">
+            <option value="">All animal types</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="wrap">
+    <div class="results-head">
+      <h2>Documented animals</h2>
+      <div id="result-count" aria-live="polite">Loading archive...</div>
+    </div>
+    <div id="pet-grid" class="grid">
+      <div class="empty"><strong>Preparing the archive</strong>Animal records will appear here once the public spreadsheet is connected.</div>
+    </div>
+
+    <div class="notice">
+      <strong>Important information:</strong> This archive is a visual reference based on available recovery documentation. Entries do not independently verify an animal’s identity, ownership, condition, or circumstances. Descriptions are based only on information visible in or provided by the cited source. Please contact the original source or relevant recovery team to verify any possible identification.
+    </div>
+  </main>
+
+  <footer>
+    Find My Furbaby · Pet Recovery Archive
+  </footer>
+
+  <script>
+    /*
+      SETUP NOTE:
+      After publishing the Website Data tab as CSV in Google Sheets,
+      paste its CSV URL between the quotation marks below.
+      Keep the Master record tab private. Only publish Website Data.
+    */
+    const CSV_URL = "";
+
+    const grid = document.getElementById("pet-grid");
+    const searchInput = document.getElementById("search");
+    const locationFilter = document.getElementById("location-filter");
+    const typeFilter = document.getElementById("type-filter");
+    const count = document.getElementById("result-count");
+
+    let pets = [];
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], value = "", quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i], next = text[i + 1];
+        if (char === '"' && quoted && next === '"') { value += '"'; i++; }
+        else if (char === '"') quoted = !quoted;
+        else if (char === "," && !quoted) { row.push(value); value = ""; }
+        else if ((char === "\n" || char === "\r") && !quoted) {
+          if (char === "\r" && next === "\n") i++;
+          row.push(value); rows.push(row); row = []; value = "";
+        } else value += char;
+      }
+      if (value.length || row.length) { row.push(value); rows.push(row); }
+      return rows;
+    }
+
+    function clean(value) { return (value || "").trim(); }
+
+    function driveImageUrl(link) {
+      const match = (link || "").match(/[?&]id=([^&]+)/) || (link || "").match(/\/d\/([^/]+)/);
+      return match ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(match[1])}&sz=w1000` : "";
+    }
+
+    function makeCard(pet) {
+      const card = document.createElement("article");
+      card.className = "pet-card";
+
+      const imageUrl = driveImageUrl(pet.photoLink);
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.className = "pet-photo";
+        img.src = imageUrl;
+        img.alt = pet.description || `${pet.animalType || "Animal"} ${pet.petId}`;
+        img.loading = "lazy";
+        img.onerror = () => {
+          const placeholder = document.createElement("div");
+          placeholder.className = "photo-placeholder";
+          placeholder.textContent = "🐾";
+          img.replaceWith(placeholder);
+        };
+        card.appendChild(img);
+      } else {
+        const placeholder = document.createElement("div");
+        placeholder.className = "photo-placeholder";
+        placeholder.textContent = "🐾";
+        card.appendChild(placeholder);
+      }
+
+      const info = document.createElement("div");
+      info.className = "pet-info";
+
+      const top = document.createElement("div");
+      top.className = "pet-top";
+      const id = document.createElement("span");
+      id.className = "pet-id";
+      id.textContent = pet.petId || "PET ID pending";
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = pet.animalType || "Animal";
+      top.append(id, tag);
+
+      const title = document.createElement("h3");
+      title.className = "pet-title";
+      title.textContent = pet.description || "Documented animal";
+
+      const desc = document.createElement("p");
+      desc.className = "pet-desc";
+      desc.textContent = pet.features || "";
+
+      const meta = document.createElement("div");
+      meta.className = "pet-meta";
+      meta.textContent = [pet.location, pet.date ? `Documented: ${pet.date}` : "", pet.source ? `Source: ${pet.source}` : ""].filter(Boolean).join(" · ");
+
+      info.append(top, title);
+      if (pet.features) info.appendChild(desc);
+      info.appendChild(meta);
+      card.appendChild(info);
+      return card;
+    }
+
+    function render() {
+      const terms = searchInput.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      const selectedLocation = locationFilter.value;
+      const selectedType = typeFilter.value;
+
+      const matches = pets.filter(pet => {
+        const haystack = [pet.petId, pet.location, pet.date, pet.animalType, pet.description, pet.features, pet.source]
+          .join(" ").toLowerCase();
+        return terms.every(term => haystack.includes(term)) &&
+          (!selectedLocation || pet.location === selectedLocation) &&
+          (!selectedType || pet.animalType === selectedType);
+      });
+
+      count.textContent = `${matches.length} ${matches.length === 1 ? "record" : "records"}`;
+      grid.replaceChildren();
+
+      if (!matches.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.innerHTML = "<strong>No matching records</strong>Try a different search term or clear one of the filters.";
+        grid.appendChild(empty);
+        return;
+      }
+      matches.forEach(pet => grid.appendChild(makeCard(pet)));
+    }
+
+    function populateFilters() {
+      const locations = [...new Set(pets.map(p => p.location).filter(Boolean))].sort();
+      const types = [...new Set(pets.map(p => p.animalType).filter(Boolean))].sort();
+      locations.forEach(value => locationFilter.add(new Option(value, value)));
+      types.forEach(value => typeFilter.add(new Option(value, value)));
+    }
+
+    async function loadArchive() {
+      if (!CSV_URL) {
+        count.textContent = "Archive setup in progress";
+        grid.innerHTML = '<div class="empty"><strong>Our archive is getting ready</strong>Search and animal records will appear here once the public archive data is connected.</div>';
+        return;
+      }
+      try {
+        const response = await fetch(CSV_URL);
+        if (!response.ok) throw new Error("Could not load the archive data.");
+        const rows = parseCSV(await response.text());
+        const headers = rows.shift().map(h => h.trim().toLowerCase());
+        const index = name => headers.indexOf(name.toLowerCase());
+        pets = rows.filter(row => row.some(cell => clean(cell))).map(row => ({
+          petId: clean(row[index("Pet ID")]),
+          location: clean(row[index("Recovery Location")]),
+          date: clean(row[index("Date Documented")]),
+          animalType: clean(row[index("Animal Type")]),
+          description: clean(row[index("Description")]),
+          features: clean(row[index("Identifying Features")]),
+          source: clean(row[index("Source")]),
+          photoLink: clean(row[index("Photo Link")])
+        })).filter(p => p.petId);
+        populateFilters();
+        render();
+      } catch (error) {
+        count.textContent = "Archive temporarily unavailable";
+        grid.innerHTML = '<div class="empty"><strong>We couldn’t load the archive just now</strong>Please try again later.</div>';
+        console.error(error);
+      }
+    }
+
+    searchInput.addEventListener("input", render);
+    locationFilter.addEventListener("change", render);
+    typeFilter.addEventListener("change", render);
+    loadArchive();
+  </script>
+</body>
+</html>
