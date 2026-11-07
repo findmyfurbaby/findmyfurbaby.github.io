@@ -186,46 +186,58 @@
 
     function clean(value) { return (value || "").trim(); }
 
-    function driveImageUrls(links) {
-      return (links || "").split(",").map(link => {
-        link = link.trim();
-        const match = link.match(/[?&]id=([^&]+)/) || link.match(/\/d\/([^/]+)/);
-        return match
-          ? `https://lh3.googleusercontent.com/d/${encodeURIComponent(match[1])}`
-          : "";
-      }).filter(Boolean);
+    // Finds every Google Drive file ID in a cell, no matter how the links are
+    // separated (commas, spaces, line breaks) or which link format is used.
+    function driveImageIds(links) {
+      const ids = [...(links || "").matchAll(/(?:\/d\/|[?&]id=)([\w-]{20,})/g)].map(m => m[1]);
+      return [...new Set(ids)];
+    }
+
+    function makePlaceholder() {
+      const placeholder = document.createElement("div");
+      placeholder.className = "photo-placeholder";
+      placeholder.textContent = "🐾";
+      return placeholder;
     }
 
     function makeCard(pet) {
       const card = document.createElement("article");
       card.className = "pet-card";
 
-      const imageUrls = driveImageUrls(pet.photoLink);
-      if (imageUrls.length) {
+      const imageIds = driveImageIds(pet.photoLink);
+      if (imageIds.length) {
         const photos = document.createElement("div");
         photos.className = "pet-photos";
 
-        imageUrls.forEach((url, index) => {
+        imageIds.forEach((id, index) => {
+          // Two ways to load each photo. If the first fails, the second is tried
+          // before falling back to the paw print.
+          const sources = [
+            `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w800`,
+            `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w800`
+          ];
+          let attempt = 0;
+
           const img = document.createElement("img");
           img.className = "pet-photo";
-          img.src = url;
           img.alt = `${pet.description || pet.petId} photo ${index + 1}`;
           img.loading = "lazy";
+          img.referrerPolicy = "no-referrer";
           img.onerror = () => {
-            const placeholder = document.createElement("div");
-            placeholder.className = "photo-placeholder";
-            placeholder.textContent = "🐾";
-            img.replaceWith(placeholder);
+            attempt++;
+            if (attempt < sources.length) {
+              img.src = sources[attempt];
+            } else {
+              img.replaceWith(makePlaceholder());
+            }
           };
+          img.src = sources[0];
           photos.appendChild(img);
         });
 
         card.appendChild(photos);
       } else {
-        const placeholder = document.createElement("div");
-        placeholder.className = "photo-placeholder";
-        placeholder.textContent = "🐾";
-        card.appendChild(placeholder);
+        card.appendChild(makePlaceholder());
       }
 
       const info = document.createElement("div");
@@ -313,7 +325,8 @@
           description: clean(row[index("Description")]),
           features: clean(row[index("Identifying Features")]),
           source: clean(row[index("Source")]),
-          photoLink: clean(row[index("Photo Link")])
+          // Accepts either "Photo Links" or "Photo Link" as the column title
+          photoLink: clean(row[index("Photo Links")] || row[index("Photo Link")])
         })).filter(p => p.petId);
         populateFilters();
         render();
