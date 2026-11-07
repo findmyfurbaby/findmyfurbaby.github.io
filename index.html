@@ -168,9 +168,9 @@
     function clean(value) { return (value || "").trim(); }
 
     function driveImageUrl(link) {
-      const match = (link || "").match(/[?&]id=([^&]+)/) || (link || "").match(/\/d\/([^/]+)/);
-      return match ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(match[1])}&sz=w1000` : "";
-    }
+  const match = (link || "").match(/[?&]id=([^&]+)/) || (link || "").match(/\/d\/([^/]+)/);
+  return match ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(match[1])}` : "";
+}
 
     function makeCard(pet) {
       const card = document.createElement("article");
