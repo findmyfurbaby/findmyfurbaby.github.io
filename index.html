@@ -47,6 +47,12 @@
     #search::placeholder { color: #92988d; }
     .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 11px; }
     select { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: white; padding: 12px; font-size: 13px; }
+    .warning {
+      max-width: 850px; margin: 14px auto 0; padding: 12px 16px; border-radius: 13px;
+      background: #f6ece5; border: 1px solid #ecd9cc; color: #7a5744;
+      font-size: 12.5px; line-height: 1.6; text-align: left;
+    }
+    .warning strong { color: #6a4636; }
     main { padding: 8px 0 70px; }
     .results-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 24px 0 18px; }
     h2 { font-family: Georgia, serif; font-weight: 500; font-size: 29px; margin: 0; }
@@ -65,7 +71,9 @@
       object-fit: cover;
       display: block;
       background: var(--sage-pale);
+      cursor: zoom-in;
     }
+    .pet-photo:focus-visible { outline: 3px solid var(--sage); outline-offset: -3px; }
     .photo-placeholder {
       aspect-ratio: 4 / 3;
       display: grid;
@@ -86,6 +94,27 @@
     .notice { background: #eceee6; border: 1px solid #dfe4d9; border-radius: 15px; padding: 18px 20px; margin-top: 34px; color: #596354; font-size: 12px; line-height: 1.7; }
     .notice strong { color: var(--sage-dark); }
     footer { border-top: 1px solid var(--line); padding: 24px 0 34px; color: var(--muted); font-size: 12px; text-align: center; }
+
+    /* Photo viewer (opens when a photo is tapped) */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 1000; display: none;
+      align-items: center; justify-content: center; padding: 16px;
+      background: rgba(25, 30, 24, .93);
+    }
+    .lightbox.open { display: flex; }
+    .lb-img { max-width: 100%; max-height: 84vh; object-fit: contain; border-radius: 10px; background: #2b322a; }
+    .lb-btn {
+      position: absolute; display: grid; place-items: center; border: 0; cursor: pointer;
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(255, 255, 255, .16); color: #fff; font-size: 24px; line-height: 1;
+    }
+    .lb-btn:hover { background: rgba(255, 255, 255, .28); }
+    .lb-btn[hidden] { display: none; }
+    .lb-close { top: 14px; right: 14px; }
+    .lb-prev { left: 14px; top: 50%; transform: translateY(-50%); }
+    .lb-next { right: 14px; top: 50%; transform: translateY(-50%); }
+    .lb-count { position: absolute; bottom: 16px; left: 0; right: 0; text-align: center; color: #e4e8df; font-size: 13px; }
+
     @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hero { padding-top: 38px; } }
     @media (max-width: 520px) {
       .wrap { width: min(100% - 28px, 1120px); }
@@ -93,6 +122,8 @@
       .filters { grid-template-columns: 1fr; }
       .results-head { align-items: start; flex-direction: column; gap: 5px; }
       .brand-name { font-size: 20px; }
+      .lb-prev { left: 8px; }
+      .lb-next { right: 8px; }
     }
   </style>
 </head>
@@ -129,6 +160,10 @@
           </select>
         </div>
       </div>
+
+      <div class="warning">
+        <strong>Please take care while browsing.</strong> Many of the animals in this archive were found deceased, and some photos may be upsetting. Take your time, and consider having someone with you if you can.
+      </div>
     </div>
   </section>
 
@@ -150,6 +185,14 @@
     Find My Furbaby · Pet Recovery Archive
   </footer>
 
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <button type="button" class="lb-btn lb-close" id="lb-close" aria-label="Close photo viewer">✕</button>
+    <button type="button" class="lb-btn lb-prev" id="lb-prev" aria-label="Previous photo">‹</button>
+    <img id="lb-img" class="lb-img" alt="">
+    <button type="button" class="lb-btn lb-next" id="lb-next" aria-label="Next photo">›</button>
+    <div class="lb-count" id="lb-count" aria-live="polite"></div>
+  </div>
+
   <script>
     /*
       SETUP NOTE:
@@ -165,7 +208,15 @@
     const typeFilter = document.getElementById("type-filter");
     const count = document.getElementById("result-count");
 
+    const lightbox = document.getElementById("lightbox");
+    const lbImg = document.getElementById("lb-img");
+    const lbCount = document.getElementById("lb-count");
+    const lbPrev = document.getElementById("lb-prev");
+    const lbNext = document.getElementById("lb-next");
+    const lbClose = document.getElementById("lb-close");
+
     let pets = [];
+    let lbIds = [], lbIndex = 0, lbAlt = "", lbAttempt = 0;
 
     function parseCSV(text) {
       const rows = [];
@@ -193,6 +244,14 @@
       return [...new Set(ids)];
     }
 
+    function imageSources(id, size) {
+      const safe = encodeURIComponent(id);
+      return [
+        `https://drive.google.com/thumbnail?id=${safe}&sz=w${size}`,
+        `https://lh3.googleusercontent.com/d/${safe}=w${size}`
+      ];
+    }
+
     function makePlaceholder() {
       const placeholder = document.createElement("div");
       placeholder.className = "photo-placeholder";
@@ -200,6 +259,69 @@
       return placeholder;
     }
 
+    /* ---------- Photo viewer ---------- */
+    function showLightboxImage() {
+      const sources = imageSources(lbIds[lbIndex], 1600);
+      lbAttempt = 0;
+      lbImg.alt = `${lbAlt} photo ${lbIndex + 1}`;
+      lbImg.onerror = () => {
+        lbAttempt++;
+        if (lbAttempt < sources.length) lbImg.src = sources[lbAttempt];
+      };
+      lbImg.src = sources[0];
+      const several = lbIds.length > 1;
+      lbCount.textContent = several ? `${lbIndex + 1} of ${lbIds.length}` : "";
+      lbPrev.hidden = !several;
+      lbNext.hidden = !several;
+    }
+
+    function openLightbox(ids, index, alt) {
+      lbIds = ids;
+      lbIndex = index;
+      lbAlt = alt;
+      lightbox.classList.add("open");
+      document.body.style.overflow = "hidden";
+      showLightboxImage();
+      lbClose.focus();
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("open");
+      document.body.style.overflow = "";
+      lbImg.onerror = null;
+      lbImg.removeAttribute("src");
+    }
+
+    function stepLightbox(direction) {
+      if (lbIds.length < 2) return;
+      lbIndex = (lbIndex + direction + lbIds.length) % lbIds.length;
+      showLightboxImage();
+    }
+
+    lbClose.addEventListener("click", closeLightbox);
+    lbPrev.addEventListener("click", () => stepLightbox(-1));
+    lbNext.addEventListener("click", () => stepLightbox(1));
+    lightbox.addEventListener("click", event => {
+      if (event.target === lightbox) closeLightbox();
+    });
+    document.addEventListener("keydown", event => {
+      if (!lightbox.classList.contains("open")) return;
+      if (event.key === "Escape") closeLightbox();
+      if (event.key === "ArrowLeft") stepLightbox(-1);
+      if (event.key === "ArrowRight") stepLightbox(1);
+    });
+
+    // Swipe left or right on a phone to flip between photos
+    let touchStartX = null;
+    lightbox.addEventListener("touchstart", event => { touchStartX = event.changedTouches[0].clientX; }, { passive: true });
+    lightbox.addEventListener("touchend", event => {
+      if (touchStartX === null) return;
+      const distance = event.changedTouches[0].clientX - touchStartX;
+      touchStartX = null;
+      if (Math.abs(distance) > 50) stepLightbox(distance < 0 ? 1 : -1);
+    }, { passive: true });
+
+    /* ---------- Cards ---------- */
     function makeCard(pet) {
       const card = document.createElement("article");
       card.className = "pet-card";
@@ -208,21 +330,22 @@
       if (imageIds.length) {
         const photos = document.createElement("div");
         photos.className = "pet-photos";
+        const altBase = pet.description || pet.petId;
 
         imageIds.forEach((id, index) => {
           // Two ways to load each photo. If the first fails, the second is tried
           // before falling back to the paw print.
-          const sources = [
-            `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w800`,
-            `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w800`
-          ];
+          const sources = imageSources(id, 800);
           let attempt = 0;
 
           const img = document.createElement("img");
           img.className = "pet-photo";
-          img.alt = `${pet.description || pet.petId} photo ${index + 1}`;
+          img.alt = `${altBase} photo ${index + 1}`;
           img.loading = "lazy";
           img.referrerPolicy = "no-referrer";
+          img.tabIndex = 0;
+          img.setAttribute("role", "button");
+          img.title = "Tap to enlarge";
           img.onerror = () => {
             attempt++;
             if (attempt < sources.length) {
@@ -231,6 +354,13 @@
               img.replaceWith(makePlaceholder());
             }
           };
+          img.addEventListener("click", () => openLightbox(imageIds, index, altBase));
+          img.addEventListener("keydown", event => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openLightbox(imageIds, index, altBase);
+            }
+          });
           img.src = sources[0];
           photos.appendChild(img);
         });
