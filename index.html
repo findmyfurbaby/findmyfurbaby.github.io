@@ -53,8 +53,27 @@
     #result-count { color: var(--muted); font-size: 13px; }
     .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
     .pet-card { background: var(--paper); border: 1px solid var(--line); border-radius: 17px; overflow: hidden; box-shadow: 0 5px 18px rgba(49, 62, 46, .04); }
-    .pet-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--sage-pale); }
-    .photo-placeholder { aspect-ratio: 4 / 3; display: grid; place-items: center; background: var(--sage-pale); color: var(--sage-dark); font-size: 42px; }
+    .pet-photos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 6px;
+      background: var(--sage-pale);
+    }
+    .pet-photo {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+      background: var(--sage-pale);
+    }
+    .photo-placeholder {
+      aspect-ratio: 4 / 3;
+      display: grid;
+      place-items: center;
+      background: var(--sage-pale);
+      color: var(--sage-dark);
+      font-size: 42px;
+    }
     .pet-info { padding: 16px; }
     .pet-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
     .pet-id { color: var(--sage-dark); font-size: 11px; letter-spacing: .08em; font-weight: 800; }
@@ -167,29 +186,41 @@
 
     function clean(value) { return (value || "").trim(); }
 
-    function driveImageUrl(link) {
-  const match = (link || "").match(/[?&]id=([^&]+)/) || (link || "").match(/\/d\/([^/]+)/);
-  return match ? `https://drive.google.com/uc?export=view&id=${encodeURIComponent(match[1])}` : "";
-}
+    function driveImageUrls(links) {
+      return (links || "").split(",").map(link => {
+        link = link.trim();
+        const match = link.match(/[?&]id=([^&]+)/) || link.match(/\/d\/([^/]+)/);
+        return match
+          ? `https://lh3.googleusercontent.com/d/${encodeURIComponent(match[1])}`
+          : "";
+      }).filter(Boolean);
+    }
 
     function makeCard(pet) {
       const card = document.createElement("article");
       card.className = "pet-card";
 
-      const imageUrl = driveImageUrl(pet.photoLink);
-      if (imageUrl) {
-        const img = document.createElement("img");
-        img.className = "pet-photo";
-        img.src = imageUrl;
-        img.alt = pet.description || `${pet.animalType || "Animal"} ${pet.petId}`;
-        img.loading = "lazy";
-        img.onerror = () => {
-          const placeholder = document.createElement("div");
-          placeholder.className = "photo-placeholder";
-          placeholder.textContent = "🐾";
-          img.replaceWith(placeholder);
-        };
-        card.appendChild(img);
+      const imageUrls = driveImageUrls(pet.photoLink);
+      if (imageUrls.length) {
+        const photos = document.createElement("div");
+        photos.className = "pet-photos";
+
+        imageUrls.forEach((url, index) => {
+          const img = document.createElement("img");
+          img.className = "pet-photo";
+          img.src = url;
+          img.alt = `${pet.description || pet.petId} photo ${index + 1}`;
+          img.loading = "lazy";
+          img.onerror = () => {
+            const placeholder = document.createElement("div");
+            placeholder.className = "photo-placeholder";
+            placeholder.textContent = "🐾";
+            img.replaceWith(placeholder);
+          };
+          photos.appendChild(img);
+        });
+
+        card.appendChild(photos);
       } else {
         const placeholder = document.createElement("div");
         placeholder.className = "photo-placeholder";
